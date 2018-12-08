@@ -11,11 +11,37 @@ class board:
         self.black_board = None
         self.is_current_red = True
         self.count_round = 0
+        self.dead_pieces = {}
+        self.moves = []
+        self.possible_next_moves = []
 
         self.NUM_BOARD_COLS = 9
         self.NUM_BOARD_ROWS = 10
 
         self._init_board()
+
+    def findAllPossibleMoves():
+        pass
+    
+    def isLost(self):
+        if True == self.is_current_red:
+            current_piece = self.red_pieces
+        else:
+            current_piece = self.black_pieces
+        return not current_piece[0].is_alive
+
+    def moveToNextRound(self, piece, dest_location):
+        possible_moves = self.findPossibleMoves(piece)
+        if True == self.isValidateMove(dest_location, possible_moves) and True == piece.is_alive:
+            src_location = piece.location
+            self.doMoveWithoutVal(piece, dest_location)
+            self.count_round = self.count_round + 1
+            self.is_current_red = not self.is_current_red
+            self.moves.append(str(piece.global_id)+"\t"+str(src_location[0])+","+str(src_location[1])+"\t"+str(dest_location[0])+","+str(dest_location[1]))
+            return True
+        else:
+            print "Invalid move. Try some other move."
+            return False
 
     def isValidateMove(self, dest_location, possible_moves):
         return dest_location in possible_moves
@@ -33,18 +59,17 @@ class board:
         if True == piece.is_red:
             my_board = self.red_board
             opp_board = self.black_board
-            opp_pieces = self.black_pieces
         else:
             my_board = self.black_board
             opp_board = self.red_board
-            opp_pieces = self.red_pieces
         # do my board
         ori_x = piece.location[0]
         ori_y = piece.location[1]
         dest_x = dest_location[0]
         dest_y = dest_location[1]
         if None != my_board[dest_x][dest_y]:
-            opp_pieces.remove(my_board[dest_x][dest_y])
+            self.dead_pieces[self.count_round] = my_board[dest_x][dest_y]
+            my_board[dest_x][dest_y].setDeath(self.count_round)
         my_board[dest_x][dest_y] = my_board[ori_x][ori_y]
         my_board[ori_x][ori_y] = None
         # do opp board
@@ -63,16 +88,16 @@ class board:
         mode in ["name", "id"]
         '''
         assert mode in ["name", "id"]
+        print "******************"
+        print "Round: " + str(self.count_round)
+
         if True==is_red:
             current_board = self.red_board
-            print "******************"
-            print "   red   view     "
-            print "******************"
+            print "red view"
         else:
             current_board = self.black_board
-            print "******************"
-            print "   black view     "
-            print "******************"
+            print "black view"
+        print "******************"
         for row in range(self.NUM_BOARD_ROWS): 
             row = self.NUM_BOARD_ROWS - 1 - row
             for col in range(self.NUM_BOARD_COLS):
@@ -89,6 +114,7 @@ class board:
                             sys.stdout.write(str(id))
             sys.stdout.write("\n")
         sys.stdout.flush()
+        print "******************"
 
     def _init_board(self):
         self.red_board = [[None]*self.NUM_BOARD_COLS for i in range(self.NUM_BOARD_ROWS)]
@@ -167,6 +193,8 @@ class piece:
         self.is_red = is_red
         self.location = location
         self.global_id = global_id
+        self.is_alive = True
+        self.dead_round = None
         if True == self.is_red:
             self.dis_name = "+"
         else:
@@ -174,6 +202,10 @@ class piece:
 
     def findPossibleMoves(self, piece, current_board):
         pass 
+
+    def setDeath(self, count_round):
+        self.is_alive = False
+        self.dead_round = count_round
 
     def _isValidDest(self, dest_location, piece, current_board):
         '''
