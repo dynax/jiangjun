@@ -1,3 +1,9 @@
 TO DO
 
-3. Board state encodings
+1. simulator in player.py
+2. search tree algorithm in gia
+
+3. board state encodings in board.py
+4. sample generator in sampleGen.py
+5. network model in gia
+

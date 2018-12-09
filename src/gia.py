@@ -1,23 +1,11 @@
 import tensorflow as tf
 
-class xiangQiVal:
+class value:
 	def __init__(self):
 		pass
 
-	def setModel(self):
-		pass
+class netWork(value):
+	pass
 
-	def someModel(self):
-		pass
-
-	def train(self):
-		pass
-
-	def predict(self):
-		pass
-
-	def save(self):
-		pass
-
-	def load(self):
-		pass
+class searchTree(value):
+	pass
