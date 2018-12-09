@@ -687,7 +687,7 @@ class bing(piece):
         if self._isValidDest([cx, cy], piece, current_board):
             possible_moves.append([cx, cy])
         # guo he
-        if cx >= 5:    
+        if x >= 5:    
             # left
             cx = x
             cy = y-1
