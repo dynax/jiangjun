@@ -20,8 +20,29 @@ class board:
 
         self._init_board()
 
-    def findAllPossibleMoves():
-        pass
+    def serialMove(self, piece, src_location, dest_location):
+        return str(piece.global_id)+"\t"+str(src_location[0])+","+str(src_location[1])+"\t"+str(dest_location[0])+","+str(dest_location[1])
+
+    def deSerialMove(self, move_code):
+        tmp_segs = move_code.split("\t")
+        global_id = int(tmp_segs[0])
+        src_location = [int(x) for x in tmp_segs[1].split(",")]
+        dest_location = [int(x) for x in tmp_segs[2].split(",")]
+        local_id = global_id % 16
+        is_red = global_id < 16
+        return local_id, src_location, dest_location, is_red
+
+    def findAllPossibleMoves(self):
+        self.possible_next_moves = []
+        if True == self.is_current_red:
+            my_pieces = self.red_pieces
+        else:
+            my_pieces = self.black_pieces
+        for piece in my_pieces:
+            if True == piece.is_alive:
+                src_location = piece.location
+                for dest_location in self.findPossibleMoves(piece):
+                    self.possible_next_moves.append((piece, src_location, dest_location))
     
     def isLost(self):
         if True == self.is_current_red:
@@ -30,6 +51,55 @@ class board:
             current_piece = self.black_pieces
         return not current_piece[0].is_alive
 
+    def revertToPrevious(self):
+        if self.count_round == 0:
+            print "It is the first round. Invalid revert. "
+            return False
+
+        tmp_last_move = self.moves[-1]
+        self.moves.remove(tmp_last_move)
+        self.is_current_red = not self.is_current_red
+        self.count_round = self.count_round - 1
+        local_id, src_location, dest_location, is_red = self.deSerialMove(tmp_last_move)
+
+        if True == is_red:
+            piece = self.red_pieces[local_id]
+            my_board = self.red_board
+            opp_board = self.black_board
+        else:
+            piece = self.black_pieces[local_id]
+            my_board = self.black_board
+            opp_board = self.red_board
+        # do my board
+        ori_x = src_location[0]
+        ori_y = src_location[1]
+        dest_x = dest_location[0]
+        dest_y = dest_location[1]
+        try:
+            reborn_piece = self.dead_pieces.pop(self.count_round)
+            reborn_piece.setAlive()
+            is_contain_reborn = True
+        except:
+            is_contain_reborn = False
+        my_board[ori_x][ori_y] = my_board[dest_x][dest_y]
+        if True == is_contain_reborn:
+            my_board[dest_x][dest_y] = reborn_piece
+        else:
+            my_board[dest_x][dest_y] = None
+        # do opp board
+        ori_x = self.NUM_BOARD_ROWS - 1 - ori_x
+        ori_y = self.NUM_BOARD_COLS - 1 - ori_y
+        dest_x = self.NUM_BOARD_ROWS - 1 - dest_x
+        dest_y = self.NUM_BOARD_COLS - 1 - dest_y
+        opp_board[ori_x][ori_y] = opp_board[dest_x][dest_y]
+        if True == is_contain_reborn:
+            opp_board[dest_x][dest_y] = reborn_piece
+        else:
+            opp_board[dest_x][dest_y] = None
+        # change the piece info
+        piece.location = src_location
+        return True
+
     def moveToNextRound(self, piece, dest_location):
         possible_moves = self.findPossibleMoves(piece)
         if True == self.isValidateMove(dest_location, possible_moves) and True == piece.is_alive:
@@ -37,7 +107,7 @@ class board:
             self.doMoveWithoutVal(piece, dest_location)
             self.count_round = self.count_round + 1
             self.is_current_red = not self.is_current_red
-            self.moves.append(str(piece.global_id)+"\t"+str(src_location[0])+","+str(src_location[1])+"\t"+str(dest_location[0])+","+str(dest_location[1]))
+            self.moves.append(self.serialMove(piece, src_location, dest_location))
             return True
         else:
             print "Invalid move. Try some other move."
@@ -88,7 +158,7 @@ class board:
         mode in ["name", "id"]
         '''
         assert mode in ["name", "id"]
-        print "******************"
+        print "*********************"
         print "Round: " + str(self.count_round)
 
         if True==is_red:
@@ -97,9 +167,13 @@ class board:
         else:
             current_board = self.black_board
             print "black view"
-        print "******************"
+        print "*********************"
+        print "    0 1 2 3 4 5 6 7 8"
+        print "---------------------"
+
         for row in range(self.NUM_BOARD_ROWS): 
             row = self.NUM_BOARD_ROWS - 1 - row
+            sys.stdout.write(str(row)+" |")
             for col in range(self.NUM_BOARD_COLS):
                 if None == current_board[row][col]:
                     sys.stdout.write("  ")
@@ -114,69 +188,118 @@ class board:
                             sys.stdout.write(str(id))
             sys.stdout.write("\n")
         sys.stdout.flush()
-        print "******************"
+        print "*********************"
 
-    def _init_board(self):
-        self.red_board = [[None]*self.NUM_BOARD_COLS for i in range(self.NUM_BOARD_ROWS)]
-        self.black_board = [[None]*self.NUM_BOARD_COLS for i in range(self.NUM_BOARD_ROWS)]
-        self._add_pieces(is_red=True)
-        self._add_pieces(is_red=False)
+    def _init_board(self, mode='default'):
+        if 'default' == mode:
+            self._gen_pieces_default()
+        if 'test' == mode:
+            self._gen_pieces_test()
+        self._set_board()
 
-    def _add_pieces(self, is_red=True):
+    def _gen_pieces_test(self):
+        tmp_base = 0
+        is_red = True
+        my_pieces = self.red_pieces
+        my_pieces.append(jiang(is_red=is_red, location=[0, 4], global_id=tmp_base+0, is_alive=True))
+        my_pieces.append(shi(is_red=is_red, location=[1, 4], global_id=tmp_base+1, is_alive=True))
+        my_pieces.append(shi(is_red=is_red, location=[0, 5], global_id=tmp_base+2, is_alive=False))
+        my_pieces.append(xiang(is_red=is_red, location=[0, 2], global_id=tmp_base+3, is_alive=False))
+        my_pieces.append(xiang(is_red=is_red, location=[0, 6], global_id=tmp_base+4, is_alive=False))
+        my_pieces.append(ma(is_red=is_red, location=[0, 1], global_id=tmp_base+5, is_alive=True))
+        my_pieces.append(ma(is_red=is_red, location=[0, 7], global_id=tmp_base+6, is_alive=False))
+        my_pieces.append(ju(is_red=is_red, location=[0, 0], global_id=tmp_base+7, is_alive=False))
+        my_pieces.append(ju(is_red=is_red, location=[0, 8], global_id=tmp_base+8, is_alive=False))
+        my_pieces.append(pao(is_red=is_red, location=[2, 1], global_id=tmp_base+9, is_alive=False))
+        my_pieces.append(pao(is_red=is_red, location=[2, 7], global_id=tmp_base+10, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 0], global_id=tmp_base+11, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 2], global_id=tmp_base+12, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 4], global_id=tmp_base+13, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 6], global_id=tmp_base+14, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 8], global_id=tmp_base+15, is_alive=False))
+        tmp_base = 16
+        is_red = False
+        my_pieces = self.black_pieces
+        my_pieces.append(jiang(is_red=is_red, location=[0, 4], global_id=tmp_base+0, is_alive=True))
+        my_pieces.append(shi(is_red=is_red, location=[0, 3], global_id=tmp_base+1, is_alive=False))
+        my_pieces.append(shi(is_red=is_red, location=[0, 5], global_id=tmp_base+2, is_alive=False))
+        my_pieces.append(xiang(is_red=is_red, location=[0, 2], global_id=tmp_base+3, is_alive=False))
+        my_pieces.append(xiang(is_red=is_red, location=[0, 6], global_id=tmp_base+4, is_alive=False))
+        my_pieces.append(ma(is_red=is_red, location=[0, 1], global_id=tmp_base+5, is_alive=False))
+        my_pieces.append(ma(is_red=is_red, location=[0, 7], global_id=tmp_base+6, is_alive=False))
+        my_pieces.append(ju(is_red=is_red, location=[0, 0], global_id=tmp_base+7, is_alive=False))
+        my_pieces.append(ju(is_red=is_red, location=[0, 8], global_id=tmp_base+8, is_alive=False))
+        my_pieces.append(pao(is_red=is_red, location=[2, 1], global_id=tmp_base+9, is_alive=False))
+        my_pieces.append(pao(is_red=is_red, location=[2, 7], global_id=tmp_base+10, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 0], global_id=tmp_base+11, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 2], global_id=tmp_base+12, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 4], global_id=tmp_base+13, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 6], global_id=tmp_base+14, is_alive=False))
+        my_pieces.append(bing(is_red=is_red, location=[3, 8], global_id=tmp_base+15, is_alive=False))
+
+    def _gen_pieces_default(self):
+        self._gen_half_pieces_default(is_red=True)
+        self._gen_half_pieces_default(is_red=False)
+
+    def _gen_half_pieces_default(self, is_red=True):
         if True==is_red:
+            my_pieces = self.red_pieces
             tmp_base = 0
         else:
+            my_pieces = self.black_pieces
             tmp_base = 16
-        tmp_piece = jiang(is_red=is_red, location=[0, 4], global_id=tmp_base+0)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = shi(is_red=is_red, location=[0, 3], global_id=tmp_base+1)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = shi(is_red=is_red, location=[0, 5], global_id=tmp_base+2)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = xiang(is_red=is_red, location=[0, 2], global_id=tmp_base+3)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = xiang(is_red=is_red, location=[0, 6], global_id=tmp_base+4)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = ma(is_red=is_red, location=[0, 1], global_id=tmp_base+5)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = ma(is_red=is_red, location=[0, 7], global_id=tmp_base+6)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = ju(is_red=is_red, location=[0, 0], global_id=tmp_base+7)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = ju(is_red=is_red, location=[0, 8], global_id=tmp_base+8)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = pao(is_red=is_red, location=[2, 1], global_id=tmp_base+9)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = pao(is_red=is_red, location=[2, 7], global_id=tmp_base+10)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = bing(is_red=is_red, location=[3, 0], global_id=tmp_base+11)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = bing(is_red=is_red, location=[3, 2], global_id=tmp_base+12)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = bing(is_red=is_red, location=[3, 4], global_id=tmp_base+13)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = bing(is_red=is_red, location=[3, 6], global_id=tmp_base+14)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        tmp_piece = bing(is_red=is_red, location=[3, 8], global_id=tmp_base+15)
-        self._add_a_piece(is_red=is_red, tmp_piece=tmp_piece)
-        
-    def _add_a_piece(self, is_red=True, tmp_piece=None):
+        my_pieces.append(jiang(is_red=is_red, location=[0, 4], global_id=tmp_base+0))
+        my_pieces.append(shi(is_red=is_red, location=[0, 3], global_id=tmp_base+1))
+        my_pieces.append(shi(is_red=is_red, location=[0, 5], global_id=tmp_base+2))
+        my_pieces.append(xiang(is_red=is_red, location=[0, 2], global_id=tmp_base+3))
+        my_pieces.append(xiang(is_red=is_red, location=[0, 6], global_id=tmp_base+4))
+        my_pieces.append(ma(is_red=is_red, location=[0, 1], global_id=tmp_base+5))
+        my_pieces.append(ma(is_red=is_red, location=[0, 7], global_id=tmp_base+6))
+        my_pieces.append(ju(is_red=is_red, location=[0, 0], global_id=tmp_base+7))
+        my_pieces.append(ju(is_red=is_red, location=[0, 8], global_id=tmp_base+8))
+        my_pieces.append(pao(is_red=is_red, location=[2, 1], global_id=tmp_base+9))
+        my_pieces.append(pao(is_red=is_red, location=[2, 7], global_id=tmp_base+10))
+        my_pieces.append(bing(is_red=is_red, location=[3, 0], global_id=tmp_base+11))
+        my_pieces.append(bing(is_red=is_red, location=[3, 2], global_id=tmp_base+12))
+        my_pieces.append(bing(is_red=is_red, location=[3, 4], global_id=tmp_base+13))
+        my_pieces.append(bing(is_red=is_red, location=[3, 6], global_id=tmp_base+14))
+        my_pieces.append(bing(is_red=is_red, location=[3, 8], global_id=tmp_base+15))
+
+    def _set_board(self):
+        self.red_board = [[None]*self.NUM_BOARD_COLS for i in range(self.NUM_BOARD_ROWS)]
+        self.black_board = [[None]*self.NUM_BOARD_COLS for i in range(self.NUM_BOARD_ROWS)]
+        self._set_half_board(is_red=True)
+        self._set_half_board(is_red=False)
+
+    def _set_half_board(self, is_red=True):
         if True==is_red:
-            self.red_pieces.append(tmp_piece)
-            tmp_x = tmp_piece.location[0]
-            tmp_y = tmp_piece.location[1]
-            self.red_board[tmp_x][tmp_y] = tmp_piece
-            tmp_x = self.NUM_BOARD_ROWS - 1 - tmp_x
-            tmp_y = self.NUM_BOARD_COLS - 1 - tmp_y
-            self.black_board[tmp_x][tmp_y] = tmp_piece
+            my_piece = self.red_pieces
+            my_board = self.red_board
+            opp_board = self.black_board
         else:
-            self.black_pieces.append(tmp_piece)
-            tmp_x = tmp_piece.location[0]
-            tmp_y = tmp_piece.location[1]
-            self.black_board[tmp_x][tmp_y] = tmp_piece
-            tmp_x = self.NUM_BOARD_ROWS - 1 - tmp_x
-            tmp_y = self.NUM_BOARD_COLS - 1 - tmp_y
-            self.red_board[tmp_x][tmp_y] = tmp_piece
+            my_piece = self.black_pieces
+            my_board = self.black_board
+            opp_board = self.red_board
+        for piece in my_piece:
+            if True==piece.is_alive:
+                tmp_x = piece.location[0]
+                tmp_y = piece.location[1]
+                my_board[tmp_x][tmp_y] = piece
+                tmp_x = self.NUM_BOARD_ROWS - 1 - tmp_x
+                tmp_y = self.NUM_BOARD_COLS - 1 - tmp_y
+                opp_board[tmp_x][tmp_y] = piece
+
+class boardEncoder:
+    '''
+    '''
+    def __init__(self, board):
+        self.board = board
+
+    def encodeAllnextStates(self):
+        pass
+
+    def encodeCurrent(self):
+        pass
 
 class piece:
     '''
@@ -189,11 +312,11 @@ class piece:
         pao = 5
         bing/zu = 6
     '''
-    def __init__(self, is_red=True, location=None, global_id=None):
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
         self.is_red = is_red
         self.location = location
         self.global_id = global_id
-        self.is_alive = True
+        self.is_alive = is_alive
         self.dead_round = None
         if True == self.is_red:
             self.dis_name = "+"
@@ -207,6 +330,10 @@ class piece:
         self.is_alive = False
         self.dead_round = count_round
 
+    def setAlive(self):
+        self.is_alive = True
+        self.dead_round = None
+
     def _isValidDest(self, dest_location, piece, current_board):
         '''
         handling the boundary and judge whether self piece is on
@@ -215,7 +342,7 @@ class piece:
         NUM_BOARD_COLS = len(current_board[0])
         x = dest_location[0]
         y = dest_location[1]
-        if x < 0 or y < 0 or x >= NUM_BOARD_ROWS or y >= NUM_BOARD_ROWS:
+        if x < 0 or y < 0 or x >= NUM_BOARD_ROWS or y >= NUM_BOARD_COLS:
             return False
         if None == current_board[x][y]:
             return True
@@ -228,8 +355,8 @@ class piece:
         return None != current_board[x][y]
 
 class jiang(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=0
         self.dis_name += "J"
 
@@ -276,8 +403,8 @@ class jiang(piece):
         return possible_moves
 
 class shi(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=1
         self.dis_name += "S"
 
@@ -308,8 +435,8 @@ class shi(piece):
         return possible_moves
 
 class xiang(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=2
         self.dis_name += "X"
 
@@ -348,8 +475,8 @@ class xiang(piece):
         return possible_moves
 
 class ma(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=3
         self.dis_name += "M"
 
@@ -408,8 +535,8 @@ class ma(piece):
         return possible_moves
 
 class ju(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=4
         self.dis_name += "U"
 
@@ -466,8 +593,8 @@ class ju(piece):
         return possible_moves
 
 class pao(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=5
         self.dis_name += "P"
 
@@ -545,8 +672,8 @@ class pao(piece):
         return possible_moves
 
 class bing(piece):
-    def __init__(self, is_red=True, location=None, global_id=None):
-        piece.__init__(self, is_red=is_red, location=location, global_id=global_id)
+    def __init__(self, is_red=True, location=None, global_id=None, is_alive=True):
+        piece.__init__(self, is_red=is_red, location=location, global_id=global_id, is_alive=is_alive)
         self.piece_type=6
         self.dis_name += "Z"
 
