@@ -64,7 +64,6 @@ class randomPlayer(player):
 
     def getStrategy(self):
         sleep(0)
-        self.board.findAllPossibleMoves()
         off_moves, def_moves = self.splitOffDef(self.board.possible_next_moves)
 
         if len(off_moves) == 0 or ( len(def_moves) !=0 and random.random() >= self.prob_offense ):
@@ -79,9 +78,9 @@ class randomPlayer(player):
         def_moves = []
         for move in possible_next_moves:
             if move[0].piece_type in self.OFF_PIECES:
-                off_moves.append((move[0], move[2]))
+                off_moves.append((move[0], move[1]))
             if move[0].piece_type in self.DEF_PIECES:
-                def_moves.append((move[0], move[2]))
+                def_moves.append((move[0], move[1]))
         return off_moves, def_moves
 
     def pickOne(self, moves):
@@ -137,12 +136,13 @@ class treePlayer(player):
 
 
 class simulator:
-    def __init__(self, board):
+    def __init__(self, board, is_allow_suicide=True):
         # default settings
         self.board = board
         self.setPlayer(player="random", is_red=True)
         self.setPlayer(player="random", is_red=False)
         self.current_board = None
+        self.is_allow_suicide = is_allow_suicide
 
     def setPlayerBoard(self, board):
         self.red_player.setBoard(board)
@@ -167,6 +167,7 @@ class simulator:
         return True
 
     def simuMultiGame(self, num_simus=100, max_step=100, is_save_qipu=False, path_qipu_prefix=None):
+        cur_path_qipu = None
         if True==is_save_qipu:
             assert os.path.isdir(os.path.dirname(path_qipu_prefix))
         winner_code = []
@@ -188,9 +189,9 @@ class simulator:
             else:
                 current_player = self.black_player
             best_move = current_player.getStrategy()
-            self.current_board.moveToNextRound(best_move[0], best_move[1])
-            if True == self.current_board.isLost():
-                if True == self.current_board.is_current_red:
+            move_status = self.current_board.moveToNextRound(best_move[0], best_move[1], self.is_allow_suicide)
+            if move_status['is_lost'] > 0:
+                if False == self.current_board.is_winner_red:
                     winner = "black"
                     winner_code = [0, 0, 1]
                 else:

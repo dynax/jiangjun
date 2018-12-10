@@ -67,17 +67,17 @@ class xiangQi:
                     for each_move in self.board.possible_next_moves:
                         print each_move
                     continue
-                is_moved = self.board.moveToNextRound(best_move[0], best_move[1])
+                move_status = self.board.moveToNextRound(best_move[0], best_move[1])
+                is_moved = move_status['is_moved']
                 if False == is_moved:
                     print "Invalid move. "
 
             timer_toc = time()
             current_player.timer = current_player.timer + (timer_toc - timer_tic)
             timer_tic = timer_toc
-
-            if True == self.board.isLost():
+            is_end = move_status["is_lost"]
+            if is_end > 0:
                 self.endWords("won")
-                is_end = True
         # saving
         self.saveMoves()
         
@@ -148,10 +148,10 @@ class xiangQi:
         print " "
 
         if "won" == state:
-            if True == self.board.is_current_red:
-                self.status['winner'] = "black"
-            else:
+            if True == self.board.is_winner_red:
                 self.status['winner'] = "red"
+            else:
+                self.status['winner'] = "black"
             print self.status['winner'] + " won!! Game over. "
         elif "draw" == state:
             print "Draw game. Game over. "
@@ -174,7 +174,6 @@ class xiangQi:
                 else:
                     prefix = os.path.name(__file__)
                 tmp_input = prefix+"/../save/"+tmp_input
-            print "test", tmp_input
             while not os.path.isdir(os.path.dirname(tmp_input)):
                 tmp_input = raw_input("Invalid dir. Type the path...\n")
             self.board.saveMoves(tmp_input, self.status['winner'])

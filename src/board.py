@@ -15,11 +15,13 @@ class board:
         self.dead_pieces = {}
         self.moves = []
         self.possible_next_moves = []
+        self.is_winner_red = None
 
         self.NUM_BOARD_COLS = 9
         self.NUM_BOARD_ROWS = 10
         if "default" == mode:
             self._init_board()
+        self.findAllPossibleMoves()
 
     def serialMove(self, piece, src_location, dest_location):
         return str(piece.global_id)+"\t"+str(src_location[0])+","+str(src_location[1])+"\t"+str(dest_location[0])+","+str(dest_location[1])
@@ -52,16 +54,7 @@ class board:
             replay["moves"] = fin.read().split("\n")
         return replay  
 
-    def findAllPossibleMoves(self):
-        # list all moves
-        self._findAllPossibleMoves()
-        # filter out forbidded moves that is under check
-        # TODO
-        # filter out the forbidden moves that is under check
-
-
-    def _findAllPossibleMoves(self):
-        # don't consider the forbidden move due to check in this function
+    def findAllPossibleMoves(self, is_allow_suicide=False):
         self.possible_next_moves = []
         if True == self.is_current_red:
             my_pieces = self.red_pieces
@@ -71,33 +64,54 @@ class board:
             if True == piece.is_alive:
                 src_location = piece.location
                 for dest_location in piece.findPossibleMoves(self):
-                    self.possible_next_moves.append((piece, src_location, dest_location))
+                    if True == is_allow_suicide or False == self.isMoveUnderCheck((piece, dest_location)):
+                        self.possible_next_moves.append((piece, dest_location))
 
-    # def isCheck(self, is_check_red=True):
-    #     if True == is_check_red:
-    #         my_shuai_location = self.red_pieces[0].location
-    #         killers = self.black_pieces
-    #     else:
-    #         my_shuai_location = self.black_pieces[0].location
-    #         killers = self.black_pieces
-    #     for each_killer in killers:
-    #         if True==each_killer.is_alive:
-    #             killer_dest_location = each_killer.findPossibleMoves()
+    def isMoveUnderCheck(self, move):
+        is_under_check = None
+        piece = move[0]
+        dest_location = move[1]
+        # do the move
+        self.doMoveWithoutVal(piece, dest_location)
+        is_under_check = self.isCheck(is_check_red=piece.is_red)
+        # revert
+        self.revertToPrevious()
+        return is_under_check
 
-    #     return False
+    def isCheck(self, is_check_red=True):
+        if True == is_check_red:
+            my_shuai_location = self.red_pieces[0].location
+            killers = self.black_pieces
+        else:
+            my_shuai_location = self.black_pieces[0].location
+            killers = self.red_pieces
+        for each_killer in killers:
+            if True==each_killer.is_alive:
+                killer_dest_location = each_killer.findPossibleMovesMirror(self)
+                if my_shuai_location in killer_dest_location:
+                    return True
+        return False
 
-    def isLost(self):
+    def isLost(self, is_allow_suicide=False):
         if True == self.is_current_red:
             current_piece = self.red_pieces
         else:
             current_piece = self.black_pieces
-        return not current_piece[0].is_alive
+        # lost due to shuai killed
+        if False == current_piece[0].is_alive:
+            self.is_winner_red = not self.is_current_red
+            return 2 
+        # lost due to checkmate
+        if False==is_allow_suicide and len(self.possible_next_moves) == 0:
+            self.is_winner_red = not self.is_current_red
+            return 1
+        return 0
 
     def revertToPrevious(self):
         if self.count_round == 0:
             print "It is the first round. Invalid revert. "
             return False
-
+        self.is_winner_red = None
         tmp_last_move = self.moves[-1]
         self.moves.remove(tmp_last_move)
         self.is_current_red = not self.is_current_red
@@ -142,26 +156,21 @@ class board:
         piece.location = src_location
         return True
 
-    def moveToNextRound(self, piece, dest_location):
-        possible_moves = piece.findPossibleMoves(self)
-        if True == self.isValidateMove(dest_location, possible_moves) and True == piece.is_alive:
+    def moveToNextRound(self, piece, dest_location, is_allow_suicide=False):
+        move_status = {}
+        if True == self.isValidateMove((piece, dest_location)):
             src_location = piece.location
             self.doMoveWithoutVal(piece, dest_location)
-            self.count_round = self.count_round + 1
-            self.is_current_red = not self.is_current_red
-            self.moves.append(self.serialMove(piece, src_location, dest_location))
-            return True
+            self.findAllPossibleMoves(is_allow_suicide)
+            move_status['is_moved'] = True
+            move_status['is_lost'] = self.isLost(is_allow_suicide)
         else:
-            return False
+            move_status['is_moved'] = False
+        
+        return move_status
 
-    def isValidateMove(self, dest_location, possible_moves):
-        return dest_location in possible_moves
-
-    # def findPossibleMoves(self, piece):
-    #     if True == piece.is_red:
-    #         return piece.findPossibleMoves(piece, self.red_board)
-    #     else:
-    #         return piece.findPossibleMoves(piece, self.black_board)
+    def isValidateMove(self, move, is_allow_suicide=False):
+        return move in self.possible_next_moves
 
     def doMoveWithoutVal(self, piece, dest_location):
         '''
@@ -173,9 +182,10 @@ class board:
         else:
             my_board = self.black_board
             opp_board = self.red_board
+        src_location = piece.location
         # do my board
-        ori_x = piece.location[0]
-        ori_y = piece.location[1]
+        ori_x = src_location[0]
+        ori_y = src_location[1]
         dest_x = dest_location[0]
         dest_y = dest_location[1]
         if None != my_board[dest_x][dest_y]:
@@ -192,6 +202,10 @@ class board:
         opp_board[ori_x][ori_y] = None
         # change the piece info
         piece.location = dest_location
+        # change board info
+        self.count_round = self.count_round + 1
+        self.is_current_red = not self.is_current_red
+        self.moves.append(self.serialMove(piece, src_location, dest_location))
         return True
 
     def display(self, is_red, mode = "name"):
@@ -364,8 +378,15 @@ class piece:
         else:
             self.dis_name = "-"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, current_board):
         pass 
+
+    def findPossibleMovesMirror(self, current_board):
+        possible_moves = self.findPossibleMoves(current_board)
+        possible_moves_mirror = []
+        for each_move in possible_moves:
+            possible_moves_mirror.append([9-each_move[0], 8-each_move[1]])
+        return possible_moves_mirror
 
     def setDeath(self, count_round):
         self.is_alive = False

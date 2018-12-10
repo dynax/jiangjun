@@ -3,6 +3,7 @@
 import board
 import player
 import os
+import time
 
 board = board.board()
 simu = player.simulator(board)
@@ -15,6 +16,9 @@ def testBestOff():
 			cur_result = simu.simuMultiGame(num_simus=10, max_step=200, is_save_qipu=False, path_qipu_prefix="../save/simu")
 			result.append
 
+start = time.time()
+print simu.simuMultiGame(num_simus=10, max_step=200, is_save_qipu=True, path_qipu_prefix="../save/simu")
+print time.time() - start
 
 # _text_board = [
 #     #u' 1  2   3   4   5   6   7   8   9',
