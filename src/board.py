@@ -53,6 +53,15 @@ class board:
         return replay  
 
     def findAllPossibleMoves(self):
+        # list all moves
+        self._findAllPossibleMoves()
+        # filter out forbidded moves that is under check
+        # TODO
+        # filter out the forbidden moves that is under check
+
+
+    def _findAllPossibleMoves(self):
+        # don't consider the forbidden move due to check in this function
         self.possible_next_moves = []
         if True == self.is_current_red:
             my_pieces = self.red_pieces
@@ -61,9 +70,22 @@ class board:
         for piece in my_pieces:
             if True == piece.is_alive:
                 src_location = piece.location
-                for dest_location in self.findPossibleMoves(piece):
+                for dest_location in piece.findPossibleMoves(self):
                     self.possible_next_moves.append((piece, src_location, dest_location))
-    
+
+    # def isCheck(self, is_check_red=True):
+    #     if True == is_check_red:
+    #         my_shuai_location = self.red_pieces[0].location
+    #         killers = self.black_pieces
+    #     else:
+    #         my_shuai_location = self.black_pieces[0].location
+    #         killers = self.black_pieces
+    #     for each_killer in killers:
+    #         if True==each_killer.is_alive:
+    #             killer_dest_location = each_killer.findPossibleMoves()
+
+    #     return False
+
     def isLost(self):
         if True == self.is_current_red:
             current_piece = self.red_pieces
@@ -121,7 +143,7 @@ class board:
         return True
 
     def moveToNextRound(self, piece, dest_location):
-        possible_moves = self.findPossibleMoves(piece)
+        possible_moves = piece.findPossibleMoves(self)
         if True == self.isValidateMove(dest_location, possible_moves) and True == piece.is_alive:
             src_location = piece.location
             self.doMoveWithoutVal(piece, dest_location)
@@ -130,17 +152,16 @@ class board:
             self.moves.append(self.serialMove(piece, src_location, dest_location))
             return True
         else:
-            print "In test, invalide move"
             return False
 
     def isValidateMove(self, dest_location, possible_moves):
         return dest_location in possible_moves
 
-    def findPossibleMoves(self, piece):
-        if True == piece.is_red:
-            return piece.findPossibleMoves(piece, self.red_board)
-        else:
-            return piece.findPossibleMoves(piece, self.black_board)
+    # def findPossibleMoves(self, piece):
+    #     if True == piece.is_red:
+    #         return piece.findPossibleMoves(piece, self.red_board)
+    #     else:
+    #         return piece.findPossibleMoves(piece, self.black_board)
 
     def doMoveWithoutVal(self, piece, dest_location):
         '''
@@ -354,7 +375,7 @@ class piece:
         self.is_alive = True
         self.dead_round = None
 
-    def _isValidDest(self, dest_location, piece, current_board):
+    def _isValidDest(self, dest_location, current_board):
         '''
         handling the boundary and judge whether self piece is on
         '''
@@ -366,7 +387,7 @@ class piece:
             return False
         if None == current_board[x][y]:
             return True
-        if piece.is_red == current_board[x][y].is_red:
+        if self.is_red == current_board[x][y].is_red:
             return False
         return True
     def _isContainPiece(self, location, current_board):
@@ -380,29 +401,33 @@ class jiang(piece):
         self.piece_type=0
         self.dis_name += "J"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         # up
         cx = x+1
         cy = y
-        if cx <= 2 and self._isValidDest([cx, cy], piece, current_board):
+        if cx <= 2 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # down
         cx = x-1
         cy = y
-        if cx >= 0 and self._isValidDest([cx, cy], piece, current_board):
+        if cx >= 0 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # left
         cx = x
         cy = y-1
-        if cy >= 3 and self._isValidDest([cx, cy], piece, current_board):
+        if cy >= 3 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # right
         cx = x
         cy = y+1
-        if cy <= 5 and self._isValidDest([cx, cy], piece, current_board):
+        if cy <= 5 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         ## he jiu
         is_align = False
@@ -428,29 +453,33 @@ class shi(piece):
         self.piece_type=1
         self.dis_name += "S"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         # top-left
         cx = x+1
         cy = y-1
-        if cx <= 2 and cy >= 3 and self._isValidDest([cx, cy], piece, current_board):
+        if cx <= 2 and cy >= 3 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # top-right
         cx = x+1
         cy = y+1
-        if cx <= 2 and cy <= 5 and self._isValidDest([cx, cy], piece, current_board):
+        if cx <= 2 and cy <= 5 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # bot-left
         cx = x-1
         cy = y-1
-        if cx >= 0 and cy >= 3 and self._isValidDest([cx, cy], piece, current_board):
+        if cx >= 0 and cy >= 3 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # bot-right
         cx = x-1
         cy = y+1
-        if cx >= 0 and cy <= 5 and self._isValidDest([cx, cy], piece, current_board):
+        if cx >= 0 and cy <= 5 and self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         return possible_moves
 
@@ -460,37 +489,41 @@ class xiang(piece):
         self.piece_type=2
         self.dis_name += "X"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         # top-left
         cx = x+2
         cy = y-2
         ox = x+1
         oy = y-1
-        if cx <= 4 and self._isValidDest([cx, cy], piece, current_board) and None == current_board[ox][oy]:
+        if cx <= 4 and self._isValidDest([cx, cy], current_board) and None == current_board[ox][oy]:
             possible_moves.append([cx, cy])
         # top-right
         cx = x+2
         cy = y+2
         ox = x+1
         xy = y+1
-        if cx <= 4 and self._isValidDest([cx, cy], piece, current_board) and None == current_board[ox][xy]:
+        if cx <= 4 and self._isValidDest([cx, cy], current_board) and None == current_board[ox][xy]:
             possible_moves.append([cx, cy])
         # bot-left
         cx = x-2
         cy = y-2
         ox = x-1
         xy = y-1
-        if self._isValidDest([cx, cy], piece, current_board) and None == current_board[ox][oy]:
+        if self._isValidDest([cx, cy], current_board) and None == current_board[ox][oy]:
             possible_moves.append([cx, cy])
         # bot-right
         cx = x-2
         cy = y+2
         ox = x-1
         oy = y+1
-        if self._isValidDest([cx, cy], piece, current_board) and None == current_board[ox][oy]:
+        if self._isValidDest([cx, cy], current_board) and None == current_board[ox][oy]:
             possible_moves.append([cx, cy])
         return possible_moves
 
@@ -500,57 +533,61 @@ class ma(piece):
         self.piece_type=3
         self.dis_name += "M"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         # top-two
         ox = x+1
         oy = y
-        if True == self._isValidDest([ox, oy], piece, current_board) and False == self._isContainPiece([ox, oy], current_board):
+        if True == self._isValidDest([ox, oy], current_board) and False == self._isContainPiece([ox, oy], current_board):
             cx = ox+1
             cy = oy-1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             cx = ox+1
             cy = oy+1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
         # bot-two
         ox = x-1
         oy = y
-        if True == self._isValidDest([ox, oy], piece, current_board) and False == self._isContainPiece([ox, oy], current_board):
+        if True == self._isValidDest([ox, oy], current_board) and False == self._isContainPiece([ox, oy], current_board):
             cx = ox-1
             cy = oy-1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             cx = ox-1
             cy = oy+1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
         # left-two
         ox = x
         oy = y-1
-        if True == self._isValidDest([ox, oy], piece, current_board) and False == self._isContainPiece([ox, oy], current_board):
+        if True == self._isValidDest([ox, oy], current_board) and False == self._isContainPiece([ox, oy], current_board):
             cx = ox-1
             cy = oy-1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             cx = ox+1
             cy = oy-1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
         # right-two
         ox = x
         oy = y+1
-        if True == self._isValidDest([ox, oy], piece, current_board) and False == self._isContainPiece([ox, oy], current_board):
+        if True == self._isValidDest([ox, oy], current_board) and False == self._isContainPiece([ox, oy], current_board):
             cx = ox-1
             cy = oy+1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             cx = ox+1
             cy = oy+1
-            if True == self._isValidDest([cx, cy], piece, current_board):
+            if True == self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
         return possible_moves
 
@@ -560,10 +597,14 @@ class ju(piece):
         self.piece_type=4
         self.dis_name += "U"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         NUM_BOARD_ROWS = len(current_board)
         NUM_BOARD_COLS = len(current_board[0])
         # top
@@ -573,7 +614,7 @@ class ju(piece):
             if False == self._isContainPiece([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             else:
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cx = cx+1
@@ -584,7 +625,7 @@ class ju(piece):
             if False == self._isContainPiece([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             else:
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cx = cx-1
@@ -595,7 +636,7 @@ class ju(piece):
             if False == self._isContainPiece([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             else:
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cy = cy-1
@@ -606,7 +647,7 @@ class ju(piece):
             if False == self._isContainPiece([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             else:
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cy = cy+1
@@ -618,10 +659,14 @@ class pao(piece):
         self.piece_type=5
         self.dis_name += "P"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
         NUM_BOARD_ROWS = len(current_board)
         NUM_BOARD_COLS = len(current_board[0])
         # top
@@ -636,7 +681,7 @@ class pao(piece):
         cx = cx+1
         while cx < NUM_BOARD_ROWS:
             if True == self._isContainPiece([cx, cy], current_board):
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cx = cx+1
@@ -652,7 +697,7 @@ class pao(piece):
         cx = cx-1
         while cx >= 0:
             if True == self._isContainPiece([cx, cy], current_board):
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cx = cx-1
@@ -668,7 +713,7 @@ class pao(piece):
         cy = cy-1
         while cy >= 0:
             if True == self._isContainPiece([cx, cy], current_board):
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cy = cy-1
@@ -684,7 +729,7 @@ class pao(piece):
         cy = cy+1
         while cy < NUM_BOARD_COLS:
             if True == self._isContainPiece([cx, cy], current_board):
-                if True == self._isValidDest([cx, cy], piece, current_board):
+                if True == self._isValidDest([cx, cy], current_board):
                     possible_moves.append([cx, cy])
                 break
             cy = cy+1
@@ -697,26 +742,30 @@ class bing(piece):
         self.piece_type=6
         self.dis_name += "Z"
 
-    def findPossibleMoves(self, piece, current_board):
+    def findPossibleMoves(self, board):
         possible_moves = []
-        x = piece.location[0]
-        y = piece.location[1]
+        x = self.location[0]
+        y = self.location[1]
+        if True == self.is_red:
+            current_board = board.red_board
+        else:
+            current_board = board.black_board
         # up
         cx = x+1
         cy = y
-        if self._isValidDest([cx, cy], piece, current_board):
+        if self._isValidDest([cx, cy], current_board):
             possible_moves.append([cx, cy])
         # guo he
         if x >= 5:    
             # left
             cx = x
             cy = y-1
-            if self._isValidDest([cx, cy], piece, current_board):
+            if self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
             # right
             cx = x
             cy = y+1
-            if self._isValidDest([cx, cy], piece, current_board):
+            if self._isValidDest([cx, cy], current_board):
                 possible_moves.append([cx, cy])
 
         return possible_moves

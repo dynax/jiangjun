@@ -113,29 +113,28 @@ class replayPlayer(player):
             my_pieces = self.board.black_pieces
         return (my_pieces[local_id], dest_location)
 
-class valuePlayer(player):
-    def __init__(self, board, is_red=True):
+class treePlayer(player):
+    def __init__(self, board, depth=0, is_red=True):
         player.__init__(self, board, is_red=is_red)
+        self.baseEvalOptions = {}
+        self.baseEvalOptions['num_simus'] = 100
+        self.baseEvalOptions['max_step'] = 150
+        self.depth = depth
 
     def getStrategy(self):
+        best_move, tmp_val = self.findBestMove
+
+    def evalBoardValue(self, board, is_for_red=True, depth=0):
         pass
 
-    def evalAllValue(self):
+    def findBestMove(self):
+        best_move = None
+        tmp_val = None
+        return best_move, tmp_val
+
+    def baseEvalBoardValue(self, board, is_for_red=True):
         pass
 
-class searchTreePlayer(valuePlayer):
-    def evalAllValue(self):
-        pass
-
-    def evalOneValue(self):
-        pass
-
-class networkPlayer(valuePlayer):
-    def evalAllValue(self):
-        pass
-
-    def evalOneValue(self):
-        pass
 
 class simulator:
     def __init__(self, board):

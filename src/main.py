@@ -118,6 +118,12 @@ class xiangQi:
             is_set = False
             while not is_set:
                 tmp_input = raw_input("Input the path to the qipu...\n")
+                if '' == os.path.dirname(tmp_input):
+                    if ""==os.path.dirname(__file__):
+                        prefix = '.'
+                    else:
+                        prefix = os.path.dirname(__file__)
+                    tmp_input = prefix+"/../save/"+tmp_input
                 is_set  = os.path.isfile(tmp_input)
                 if not is_set:
                     print "Invalid path, file " + tmp_input + " does not exists."
@@ -162,6 +168,13 @@ class xiangQi:
             tmp_input = raw_input("Invalid input. \nSave qipu? (Y/N)\n")
         if tmp_input in ["Y", "y"]:
             tmp_input = raw_input("Type the path...\n")
+            if '' == os.path.dirname(tmp_input):
+                if ""==os.path.dirname(__file__):
+                    prefix = '.'
+                else:
+                    prefix = os.path.name(__file__)
+                tmp_input = prefix+"/../save/"+tmp_input
+            print "test", tmp_input
             while not os.path.isdir(os.path.dirname(tmp_input)):
                 tmp_input = raw_input("Invalid dir. Type the path...\n")
             self.board.saveMoves(tmp_input, self.status['winner'])

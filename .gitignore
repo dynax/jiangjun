@@ -1,5 +1,5 @@
-result/*
-!result/.keep
+save/*
+!save/.keep
 data/*
 !data/.keep
 
