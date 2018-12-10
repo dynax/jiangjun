@@ -6,7 +6,7 @@ import os
 import time
 
 board = board.board()
-simu = player.simulator(board)
+simu = player.simulator(board, False)
 
 def testBestOff():
 	result = []
@@ -17,7 +17,7 @@ def testBestOff():
 			result.append
 
 start = time.time()
-print simu.simuMultiGame(num_simus=10, max_step=200, is_save_qipu=True, path_qipu_prefix="../save/simu")
+print simu.simuMultiGame(num_simus=10, max_step=1600, is_save_qipu=True, path_qipu_prefix="../save/simu")
 print time.time() - start
 
 # _text_board = [
