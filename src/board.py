@@ -1,10 +1,11 @@
 import sys
+import copy
 
 class board:
     '''
 
     '''
-    def __init__(self):
+    def __init__(self, mode="default"):
         self.red_pieces = []
         self.black_pieces = []
         self.red_board = None
@@ -17,8 +18,8 @@ class board:
 
         self.NUM_BOARD_COLS = 9
         self.NUM_BOARD_ROWS = 10
-
-        self._init_board()
+        if "default" == mode:
+            self._init_board()
 
     def serialMove(self, piece, src_location, dest_location):
         return str(piece.global_id)+"\t"+str(src_location[0])+","+str(src_location[1])+"\t"+str(dest_location[0])+","+str(dest_location[1])
@@ -31,6 +32,25 @@ class board:
         local_id = global_id % 16
         is_red = global_id < 16
         return local_id, src_location, dest_location, is_red
+
+    def saveMoves(self, path, winner):
+        assert winner in ["black", "red", "draw"]
+        with open(path, 'w') as fout:
+            fout.write("total_round: "+str(self.count_round)+"\n")
+            fout.write("winner: "+winner+"\n")
+            fout.write("\n".join(self.moves)) 
+            fout.write("\n")
+        return True
+
+    def loadMoves(self, path_qipu):
+        replay = {}
+        with open(path_qipu, "r") as fin:
+            tmp = fin.readline().split()
+            replay["total_round"] = int(tmp[1])
+            tmp = fin.readline().split()
+            replay["winner"] = tmp[1]
+            replay["moves"] = fin.read().split("\n")
+        return replay  
 
     def findAllPossibleMoves(self):
         self.possible_next_moves = []
@@ -110,7 +130,7 @@ class board:
             self.moves.append(self.serialMove(piece, src_location, dest_location))
             return True
         else:
-            print "Invalid move. Try some other move."
+            print "In test, invalide move"
             return False
 
     def isValidateMove(self, dest_location, possible_moves):

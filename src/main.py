@@ -34,8 +34,10 @@ class xiangQi:
             self.board.display(self.board.is_current_red, "name")
             if True == self.board.is_current_red:
                 current_player = self.red_player
+                print "test, red current"
             else:
                 current_player = self.black_player
+                print "test, black current"
             print current_player.name_pre+"'s turn."
             print current_player.name_pre+"'s total consumed time is " + str(datetime.timedelta(current_player.timer / 1000)) + " ."
             print "******************"
@@ -66,6 +68,8 @@ class xiangQi:
                         print each_move
                     continue
                 is_moved = self.board.moveToNextRound(best_move[0], best_move[1])
+                if False == is_moved:
+                    print "Invalid move. "
 
             timer_toc = time()
             current_player.timer = current_player.timer + (timer_toc - timer_tic)
@@ -160,11 +164,7 @@ class xiangQi:
             tmp_input = raw_input("Type the path...\n")
             while not os.path.isdir(os.path.dirname(tmp_input)):
                 tmp_input = raw_input("Invalid dir. Type the path...\n")
-            with open(tmp_input, 'w') as fout:
-                fout.write("total_round: "+str(self.board.count_round)+"\n")
-                fout.write("winner: "+self.status['winner']+"\n")
-                fout.write("\n".join(self.board.moves)) 
-                fout.write("\n")
+            self.board.saveMoves(tmp_input, self.status['winner'])
 
     def _initPlayers(self):
         # red player

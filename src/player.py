@@ -1,6 +1,8 @@
 import random
 from time import time, sleep
 import os
+import numpy as np
+import copy
 
 class player:
     def __init__(self, board, is_red=True):
@@ -10,11 +12,14 @@ class player:
         else:
             self.name_pre = "Black"
         self.timer = 0
-        self.board = board
+        self.setBoard(board)
 
     def getStrategy(self, all_move_encodings):
         best_move = []
         return best_move
+
+    def setBoard(self, board):
+        self.board = board
 
 class humanPlayer(player):
     def getStrategy(self):
@@ -61,7 +66,8 @@ class randomPlayer(player):
         sleep(0)
         self.board.findAllPossibleMoves()
         off_moves, def_moves = self.splitOffDef(self.board.possible_next_moves)
-        if len(off_moves) == 0 or random.random() >= self.prob_offense:
+
+        if len(off_moves) == 0 or ( len(def_moves) !=0 and random.random() >= self.prob_offense ):
             # defence
             return self.pickOne(def_moves)
         else:
@@ -76,7 +82,6 @@ class randomPlayer(player):
                 off_moves.append((move[0], move[2]))
             if move[0].piece_type in self.DEF_PIECES:
                 def_moves.append((move[0], move[2]))
-
         return off_moves, def_moves
 
     def pickOne(self, moves):
@@ -86,17 +91,7 @@ class randomPlayer(player):
 class replayPlayer(player):
     def __init__(self, path_qipu, board, is_red=True):
         player.__init__(self, board, is_red=is_red)
-        self.replay = self._loadReplay(path_qipu)
-
-    def _loadReplay(self, path_qipu):
-        replay = {}
-        with open(path_qipu, "r") as fin:
-            tmp = fin.readline().split()
-            replay["total_round"] = int(tmp[1])
-            tmp = fin.readline().split()
-            replay["winner"] = tmp[1]
-            replay["moves"] = fin.read().split("\n")
-        return replay
+        self.replay = self.board.loadMoves(path_qipu)
 
     def getStrategy(self):
         is_done = False 
@@ -143,6 +138,69 @@ class networkPlayer(valuePlayer):
         pass
 
 class simulator:
-    def __init__(self):
-        pass
+    def __init__(self, board):
+        # default settings
+        self.board = board
+        self.setPlayer(player="random", is_red=True)
+        self.setPlayer(player="random", is_red=False)
+        self.current_board = None
 
+    def setPlayerBoard(self, board):
+        self.red_player.setBoard(board)
+        self.black_player.setBoard(board)
+
+    def setPlayer(self, player="random", is_red=True):
+        assert player in ["random"]
+        if True == is_red:
+            # red player
+            if player == "random":
+                self.red_player = randomPlayer(self.board, is_red=True)
+        else:
+            # black player
+            if player == "random":
+                self.black_player = randomPlayer(self.board, is_red=False)
+
+    def saveQipu(self, board, path):
+        if not os.path.isdir(os.path.dirname(path)):
+            print "Path directory does not exists. "
+            return False
+        board.saveMoves(path)
+        return True
+
+    def simuMultiGame(self, num_simus=100, max_step=100, is_save_qipu=False, path_qipu_prefix=None):
+        if True==is_save_qipu:
+            assert os.path.isdir(os.path.dirname(path_qipu_prefix))
+        winner_code = []
+        for i in range(num_simus):
+            if True==is_save_qipu:
+                cur_path_qipu = path_qipu_prefix + "-" + str(i)
+            cur_winner, cur_winner_code = self.simuOneGame(max_step=max_step, is_save_qipu=is_save_qipu, path_qipu=cur_path_qipu)
+            winner_code.append(cur_winner_code)
+        winner_code = np.array(winner_code)
+        return np.sum(winner_code, axis=0) / float(num_simus)
+
+    def simuOneGame(self, max_step=100, is_save_qipu=False, path_qipu=None):
+        winner = None
+        self.current_board = copy.deepcopy(self.board)
+        self.setPlayerBoard(self.current_board) # !!! So important by current design. Considering put board as an argument in getStrategy method to optimize this. 
+        for step in range(max_step):
+            if True == self.current_board.is_current_red:
+                current_player = self.red_player
+            else:
+                current_player = self.black_player
+            best_move = current_player.getStrategy()
+            self.current_board.moveToNextRound(best_move[0], best_move[1])
+            if True == self.current_board.isLost():
+                if True == self.current_board.is_current_red:
+                    winner = "black"
+                    winner_code = [0, 0, 1]
+                else:
+                    winner = "red"
+                    winner_code = [1, 0, 0]
+                break
+        if None == winner:
+            winner = "draw"
+            winner_code = [0, 1, 0]
+        if True == is_save_qipu:
+            self.current_board.saveMoves(path_qipu, winner)
+        return winner, winner_code
