@@ -1,12 +1,13 @@
 TO DO
 
-0. is_check judgement
-after filtering, no possible move means lost
-
-1. simulator in player.py
 2. search tree algorithm in gia
 
 3. board state encodings in board.py
 4. sample generator in sampleGen.py
 5. network model in gia
 
+any format into my format of qipu
+
+use hash to build the qipu based engine
+
+board hash method!!

@@ -3,7 +3,10 @@ from time import time, sleep
 import os
 import numpy as np
 import copy
+import itertools
+from multiprocessing import Pool
 
+# remember to set the board each time the simulation for board is changed
 class player:
     def __init__(self, board, is_red=True):
         self.is_red = is_red
@@ -115,33 +118,64 @@ class replayPlayer(player):
 class treePlayer(player):
     def __init__(self, board, depth=0, is_red=True):
         player.__init__(self, board, is_red=is_red)
-        self.baseEvalOptions = {}
-        self.baseEvalOptions['num_simus'] = 100
-        self.baseEvalOptions['max_step'] = 150
         self.depth = depth
 
     def getStrategy(self):
-        best_move, tmp_val = self.findBestMove
+        my_board = copy.deepcopy(self.board)
+        tmp_move, tmp_val = self.findBestMove(my_board, self.depth, is_for_red=my_board.is_current_red)
+        is_red = tmp_move[0].is_red
+        local_id = tmp_move[0].global_id % 16
+        if True==is_red:
+            current_piece = self.board.red_pieces
+        else:
+            current_piece = self.board.black_pieces
+        best_move = (current_piece[local_id], tmp_move[1])
+        return best_move
 
-    def evalBoardValue(self, board, is_for_red=True, depth=0):
-        pass
+    def findBestMove(self, board, depth=0, is_for_red=True):
+        possible_next_moves = copy.copy(board.possible_next_moves)
+        tmp_val = []
+        for each_move in possible_next_moves:
+            if depth>0:
+                # recursive search tree
+                move_status = board.moveToNextRound(each_move[0], each_move[1])
+                cur_move, cur_val = self.findBestMove(board, depth=depth-1, is_for_red=is_for_red)
+                board.revertToPreviousUpdateMoves()
+            else:
+                # launch base evaluator
+                cur_val = self.baseBoardValue(board, is_for_red)
+            tmp_val.append(cur_val)
+        max_val = max(tmp_val)
+        all_max_ind = [i for i, x in enumerate(tmp_val) if x==max_val]
+        max_ind = all_max_ind[random.randint(0, len(all_max_ind)-1)]
+        return possible_next_moves[max_ind], tmp_val[max_ind]
 
-    def findBestMove(self):
-        best_move = None
-        tmp_val = None
-        return best_move, tmp_val
+    def baseBoardValue(self, board, is_for_red=True):
+        return None
 
-    def baseEvalBoardValue(self, board, is_for_red=True):
-        pass
+class randTreePlayer(treePlayer):
+    def __init__(self, board, depth, is_red=True, num_simus=200, max_step=300, is_allow_suicide=False):
+        treePlayer.__init__(self, board, depth=depth, is_red=is_red)
+        self.num_simus = num_simus
+        self.max_step = max_step
+        self.simulator = simulator(board, is_allow_suicide)
 
+    def baseBoardValue(self, board, is_for_red=True):
+        self.simulator.setPlayerBoard(board)
+        win_rate = self.simulator.simuMultiGame(num_simus=self.num_simus, max_step=self.max_step, is_save_qipu=False, path_qipu_prefix=None)
+        if True==is_for_red:
+            val = win_rate[0] + win_rate[1]
+        else:
+            val = win_rate[1] + win_rate[2]
+        return val
 
+################
 class simulator:
-    def __init__(self, board, is_allow_suicide=True):
+    def __init__(self, board, is_allow_suicide=False):
         # default settings
         self.board = board
         self.setPlayer(player="random", is_red=True)
         self.setPlayer(player="random", is_red=False)
-        self.current_board = None
         self.is_allow_suicide = is_allow_suicide
 
     def setPlayerBoard(self, board):
@@ -179,19 +213,33 @@ class simulator:
         winner_code = np.array(winner_code)
         return np.sum(winner_code, axis=0) / float(num_simus)
 
+    def simuMultiGamePool(self, num_simus=100, max_step=100, is_save_qipu=False, path_qipu_prefix=None):
+        if True==is_save_qipu:
+            assert os.path.isdir(os.path.dirname(path_qipu_prefix))
+        winner_code = []
+        qipu_paths = [path_qipu_prefix+"_"+str(i) for i in range(num_simus)]
+        self.pool.map(self.simuOneGame_star, itertools.izip(itertools.repeat(max_step), itertools.repeat(is_save_qipu), qipu_paths))
+        # self.pool.join()
+        winner_code = np.array(winner_code)
+        return np.sum(winner_code, axis=0) / float(num_simus)
+
+
+    def simuOneGame_star(self, args):
+        return self.simuOneGame(*args)
+
     def simuOneGame(self, max_step=100, is_save_qipu=False, path_qipu=None):
         winner = None
-        self.current_board = copy.deepcopy(self.board)
-        self.setPlayerBoard(self.current_board) # !!! So important by current design. Considering put board as an argument in getStrategy method to optimize this. 
+        current_board = copy.deepcopy(self.board)
+        self.setPlayerBoard(current_board) # !!! So important by current design. Considering put board as an argument in getStrategy method to optimize this. 
         for step in range(max_step):
-            if True == self.current_board.is_current_red:
+            if True == current_board.is_current_red:
                 current_player = self.red_player
             else:
                 current_player = self.black_player
             best_move = current_player.getStrategy()
-            move_status = self.current_board.moveToNextRound(best_move[0], best_move[1], self.is_allow_suicide)
+            move_status = current_board.moveToNextRound(best_move[0], best_move[1], self.is_allow_suicide)
             if move_status['is_lost'] > 0:
-                if False == self.current_board.is_winner_red:
+                if False == current_board.is_winner_red:
                     winner = "black"
                     winner_code = [0, 0, 1]
                 else:
@@ -202,5 +250,5 @@ class simulator:
             winner = "draw"
             winner_code = [0, 1, 0]
         if True == is_save_qipu:
-            self.current_board.saveMoves(path_qipu, winner)
+            current_board.saveMoves(path_qipu, winner)
         return winner, winner_code

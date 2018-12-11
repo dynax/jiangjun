@@ -19,9 +19,8 @@ class board:
 
         self.NUM_BOARD_COLS = 9
         self.NUM_BOARD_ROWS = 10
-        if "default" == mode:
-            self._init_board()
-        self.findAllPossibleMoves()
+        self._init_board(mode)
+        self.findAllPossibleMoves(is_allow_suicide=False)
 
     def serialMove(self, piece, src_location, dest_location):
         return str(piece.global_id)+"\t"+str(src_location[0])+","+str(src_location[1])+"\t"+str(dest_location[0])+","+str(dest_location[1])
@@ -107,7 +106,12 @@ class board:
             return 1
         return 0
 
-    def revertToPrevious(self):
+    def revertToPreviousUpdateMoves(self, is_allow_suicide=False):
+        self.revertToPrevious(is_allow_suicide)
+        self.findAllPossibleMoves(is_allow_suicide)
+        return True
+
+    def revertToPrevious(self, is_allow_suicide=False):
         if self.count_round == 0:
             print "It is the first round. Invalid revert. "
             return False
@@ -166,10 +170,11 @@ class board:
             move_status['is_lost'] = self.isLost(is_allow_suicide)
         else:
             move_status['is_moved'] = False
+            move_status['is_lost'] = 0
         
         return move_status
 
-    def isValidateMove(self, move, is_allow_suicide=False):
+    def isValidateMove(self, move):
         return move in self.possible_next_moves
 
     def doMoveWithoutVal(self, piece, dest_location):

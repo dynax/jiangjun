@@ -3,7 +3,7 @@ from time import time
 import datetime
 import os
 import random
-from player import humanPlayer, randomPlayer, replayPlayer
+from player import humanPlayer, randomPlayer, replayPlayer, randTreePlayer
 
 class xiangQi:
     '''
@@ -17,7 +17,7 @@ class xiangQi:
         self.game_options['black_player_options'] = None
         self.status = {}
         self.status['winner'] = None
-        self.VALID_PLAYER = ["human", "random", "replay"]
+        self.VALID_PLAYER = ["human", "random", "replay", "randomTree"]
 
         self.startWords()
         self.board = board()
@@ -34,10 +34,8 @@ class xiangQi:
             self.board.display(self.board.is_current_red, "name")
             if True == self.board.is_current_red:
                 current_player = self.red_player
-                print "test, red current"
             else:
                 current_player = self.black_player
-                print "test, black current"
             print current_player.name_pre+"'s turn."
             print current_player.name_pre+"'s total consumed time is " + str(datetime.timedelta(current_player.timer / 1000)) + " ."
             print "******************"
@@ -59,7 +57,7 @@ class xiangQi:
                     continue
                 # signal for revert a round
                 if "rv" == best_move:
-                    is_moved = self.board.revertToPrevious()
+                    is_moved = self.board.revertToPreviousUpdateMoves(is_allow_suicide=False)
                     continue
                 if "pnext" == best_move:
                     is_moved = False
@@ -71,13 +69,14 @@ class xiangQi:
                 is_moved = move_status['is_moved']
                 if False == is_moved:
                     print "Invalid move. "
+                is_end = move_status["is_lost"]
+                if is_end > 0:
+                    self.endWords("won")
 
             timer_toc = time()
             current_player.timer = current_player.timer + (timer_toc - timer_tic)
             timer_tic = timer_toc
-            is_end = move_status["is_lost"]
-            if is_end > 0:
-                self.endWords("won")
+            
         # saving
         self.saveMoves()
         
@@ -186,6 +185,8 @@ class xiangQi:
             self.red_player = randomPlayer(self.board, is_red=True)
         if self.game_options['red_player'] == "replay":
             self.red_player = replayPlayer(self.game_options['path_qipu'], self.board, is_red = True)
+        if self.game_options['red_player'] == "randomTree":
+            self.red_player = randTreePlayer(self.board, 0, is_red = True)
         # black player
         if self.game_options['black_player'] == "human":
             self.black_player = humanPlayer(self.board, is_red=False)
@@ -193,6 +194,8 @@ class xiangQi:
             self.black_player = randomPlayer(self.board, is_red=False)
         if self.game_options['black_player'] == "replay":
             self.black_player = replayPlayer(self.game_options['path_qipu'], self.board, is_red = False)
+        if self.game_options['black_player'] == "randomTree":
+            self.black_player = randTreePlayer(self.board, 0, is_red = False)
 
 if __name__ == "__main__":
     interface = xiangQi()
